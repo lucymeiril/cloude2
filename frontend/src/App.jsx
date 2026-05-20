@@ -1,39 +1,70 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
   const [todos, setTodos] = useState([])
   const [inputValue, setInputValue] = useState('')
+  const API_URL = 'http://localhost:8080/api/todos'
 
-  const addTodo = (e) => {
+  // 초기 데이터 가져오기
+  useEffect(() => {
+    fetch(API_URL)
+      .then((res) => res.json())
+      .then((data) => setTodos(data))
+      .catch((err) => console.error('Error fetching todos:', err))
+  }, [])
+
+  const addTodo = async (e) => {
     e.preventDefault()
     if (inputValue.trim() === '') return
 
     const newTodo = {
-      id: Date.now(),
       text: inputValue,
       completed: false,
     }
 
-    setTodos([...todos, newTodo])
-    setInputValue('')
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTodo),
+      })
+      const savedTodo = await res.json()
+      setTodos([...todos, savedTodo])
+      setInputValue('')
+    } catch (err) {
+      console.error('Error adding todo:', err)
+    }
   }
 
-  const toggleTodo = (id) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    )
+  const toggleTodo = async (id) => {
+    const todoToToggle = todos.find((t) => t.id === id)
+    const updatedTodo = { ...todoToToggle, completed: !todoToToggle.completed }
+
+    try {
+      await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTodo),
+      })
+      setTodos(todos.map((t) => (t.id === id ? updatedTodo : t)))
+    } catch (err) {
+      console.error('Error toggling todo:', err)
+    }
   }
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id))
+  const deleteTodo = async (id) => {
+    try {
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+      setTodos(todos.filter((t) => t.id !== id))
+    } catch (err) {
+      console.error('Error deleting todo:', err)
+    }
   }
 
   return (
     <div className="todo-container">
-      <h1>Todo List</h1>
+      <h1>Todo List (Full-Stack)</h1>
       <form onSubmit={addTodo} className="todo-input-form">
         <input
           type="text"
